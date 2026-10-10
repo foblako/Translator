@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  translator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../:/workspace
+    # Default behavior is to do nothing, wait for explicit 'run' or 'tests' commands
+    command: ["bash"]
+
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../:/workspace
+    command: ["tests"]

@@ -1,0 +1,4 @@
+// undefined_var.txt
+// Error: reading from an undefined variable
+a = 5;
+print(b);
