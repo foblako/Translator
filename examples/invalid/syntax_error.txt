@@ -1,5 +1,5 @@
-// syntax_error.txt
-// Error: missing semicolon on the first line
-a = 1
-b = 2;
-print(a + b);
+start intro
+
+intro {
+    npc "Старик" "Привет!"  // Ошибка: пропущено двоеточие
+}

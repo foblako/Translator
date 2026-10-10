@@ -1,5 +1,0 @@
-// type_error.txt
-// Error: attempting to add a boolean and an integer (since true/false aren't keywords, let's do integer and set)
-a = {1, 2};
-b = 5;
-c = a + b;

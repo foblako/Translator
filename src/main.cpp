@@ -1,10 +1,12 @@
 #include <iostream>
 #include <fstream>
 #include "antlr4-runtime.h"
-#include "SetLangLexer.h"
-#include "SetLangParser.h"
-#include "SetLangInterpreter.h"
-#include "SetLangErrorListener.h"
+#include "DialogueScriptLexer.h"
+#include "DialogueScriptParser.h"
+#include "DialogueInterpreter.h"
+#include "DialogueErrorListener.h"
+#include "WorldState.h"
+#include "BranchRegistry.h"
 
 int main(int argc, const char* argv[]) {
     if (argc < 2) {
@@ -19,30 +21,33 @@ int main(int argc, const char* argv[]) {
     }
 
     antlr4::ANTLRInputStream input(stream);
-    SetLangLexer lexer(&input);
+    DialogueScriptLexer lexer(&input);
 
-    SetLangErrorListener errorListener;
+    DialogueErrorListener errorListener;
     lexer.removeErrorListeners();
     lexer.addErrorListener(&errorListener);
 
     antlr4::CommonTokenStream tokens(&lexer);
-    SetLangParser parser(&tokens);
+    DialogueScriptParser parser(&tokens);
 
     parser.removeErrorListeners();
     parser.addErrorListener(&errorListener);
 
-    SetLangParser::ProgramContext* tree = parser.program();
+    DialogueScriptParser::ProgramContext* tree = parser.program();
 
     if (errorListener.hasError) {
         std::cerr << "Parsing failed due to syntax errors." << std::endl;
         return 1;
     }
 
-    SetLangInterpreter interpreter;
+    WorldState world;
+    BranchRegistry registry;
+    DialogueInterpreter interpreter(world, registry);
+
     try {
         interpreter.visit(tree);
     } catch (const std::exception& e) {
-        std::cerr << "Runtime error: " << e.what() << std::endl;
+        std::cerr << e.what() << std::endl;
         return 1;
     }
 

@@ -38,22 +38,22 @@ add_subdirectory(${antlr4_runtime_SOURCE_DIR}/runtime/Cpp ${CMAKE_CURRENT_BINARY
 
 # Paths for grammar and generated files
 set(GRAMMAR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/grammar")
-set(GRAMMAR_FILE "${GRAMMAR_DIR}/SetLang.g4")
+set(GRAMMAR_FILE "${GRAMMAR_DIR}/DialogueScript.g4")
 set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 file(MAKE_DIRECTORY "${GENERATED_DIR}")
 
 set(GENERATED_SRCS
-    ${GENERATED_DIR}/SetLangLexer.cpp
-    ${GENERATED_DIR}/SetLangParser.cpp
-    ${GENERATED_DIR}/SetLangBaseVisitor.cpp
-    ${GENERATED_DIR}/SetLangVisitor.cpp
+    ${GENERATED_DIR}/DialogueScriptLexer.cpp
+    ${GENERATED_DIR}/DialogueScriptParser.cpp
+    ${GENERATED_DIR}/DialogueScriptBaseVisitor.cpp
+    ${GENERATED_DIR}/DialogueScriptVisitor.cpp
 )
 
 set(GENERATED_HEADERS
-    ${GENERATED_DIR}/SetLangLexer.h
-    ${GENERATED_DIR}/SetLangParser.h
-    ${GENERATED_DIR}/SetLangBaseVisitor.h
-    ${GENERATED_DIR}/SetLangVisitor.h
+    ${GENERATED_DIR}/DialogueScriptLexer.h
+    ${GENERATED_DIR}/DialogueScriptParser.h
+    ${GENERATED_DIR}/DialogueScriptBaseVisitor.h
+    ${GENERATED_DIR}/DialogueScriptVisitor.h
 )
 
 # Custom command to run ANTLR tool
@@ -68,6 +68,7 @@ add_custom_command(
 # Main executable target
 set(SRC_FILES
     src/main.cpp
+    src/DialogueInterpreter.cpp
 )
 
 add_executable(main ${SRC_FILES} ${GENERATED_SRCS})

@@ -3,7 +3,7 @@
 #include "antlr4-runtime.h"
 #include <iostream>
 
-class SetLangErrorListener : public antlr4::BaseErrorListener {
+class DialogueErrorListener : public antlr4::BaseErrorListener {
 public:
     bool hasError = false;
 

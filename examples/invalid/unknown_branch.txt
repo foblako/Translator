@@ -1,0 +1,6 @@
+start intro
+
+intro {
+    npc "Старик": "Привет!"
+    goto unknown_branch  // Ошибка: ветка 'unknown_branch' не определена
+}

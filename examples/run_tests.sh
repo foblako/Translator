@@ -20,7 +20,7 @@ for file in "$SCRIPT_DIR/valid/"*.txt; do
     [ -e "$file" ] || continue
     TOTAL=$((TOTAL + 1))
 
-    $EXECUTABLE "$file" > /dev/null 2>&1
+    yes 1 | $EXECUTABLE "$file" > /dev/null 2>&1
     EXIT_CODE=$?
 
     if [ $EXIT_CODE -eq 0 ]; then
@@ -38,7 +38,7 @@ for file in "$SCRIPT_DIR/invalid/"*.txt; do
     [ -e "$file" ] || continue
     TOTAL=$((TOTAL + 1))
 
-    $EXECUTABLE "$file" > /dev/null 2>&1
+    yes 1 | $EXECUTABLE "$file" > /dev/null 2>&1
     EXIT_CODE=$?
 
     if [ $EXIT_CODE -ne 0 ]; then
