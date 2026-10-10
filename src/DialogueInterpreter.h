@@ -5,14 +5,16 @@
 #include "BranchRegistry.h"
 #include <string>
 
+// Главный класс интерпретатора, обходящий дерево разбора
 class DialogueInterpreter : public DialogueScriptBaseVisitor {
-    WorldState& world;
-    BranchRegistry& registry;
-    bool isStaticAnalysisPass = true;
+    WorldState& mir;               // Ссылка на состояние мира
+    BranchRegistry& reestr_vetok;  // Ссылка на реестр веток
+    bool etap_stat_analiza = true; // Флаг текущего прохода (анализ или исполнение)
 
 public:
-    DialogueInterpreter(WorldState& world, BranchRegistry& registry);
+    DialogueInterpreter(WorldState& mir, BranchRegistry& reestr_vetok);
 
+    // Переопределение базовых методов обхода ANTLR
     antlrcpp::Any visitProgram(DialogueScriptParser::ProgramContext* ctx) override;
     antlrcpp::Any visitStartDecl(DialogueScriptParser::StartDeclContext* ctx) override;
     antlrcpp::Any visitBranchDecl(DialogueScriptParser::BranchDeclContext* ctx) override;
@@ -24,9 +26,12 @@ public:
     antlrcpp::Any visitActionStmt(DialogueScriptParser::ActionStmtContext* ctx) override;
 
 private:
-    void executeBranch(const std::string& branchName);
-    bool evaluateCondition(DialogueScriptParser::ConditionContext* ctx);
+    // Исполнение конкретной ветки
+    void vypolnitVetku(const std::string& imya_vetki);
 
-    // Helper string util
-    std::string unquote(const std::string& str);
+    // Вычисление условия (наличие предмета или флага)
+    bool vychislitUslovie(DialogueScriptParser::ConditionContext* ctx);
+
+    // Вспомогательная функция для удаления кавычек у строк
+    std::string udalitKavychki(const std::string& stroka);
 };

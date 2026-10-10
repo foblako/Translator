@@ -4,32 +4,39 @@
 #include <string>
 #include "DialogueScriptParser.h"
 
+// Реестр всех веток диалога для быстрых переходов
 class BranchRegistry {
-    std::unordered_map<std::string, DialogueScriptParser::BranchDeclContext*> branches;
-    std::string startBranch;
+    // Хранилище веток: имя ветки -> указатель на узел в дереве разбора
+    std::unordered_map<std::string, DialogueScriptParser::BranchDeclContext*> vse_vetki;
+    std::string startovaya_vetka; // Имя стартовой ветки
 
 public:
-    void registerBranch(const std::string& name, DialogueScriptParser::BranchDeclContext* ctx) {
-        branches[name] = ctx;
+    // Зарегистрировать новую ветку
+    void zaregistrirovatVetku(const std::string& imya_vetki, DialogueScriptParser::BranchDeclContext* kontekst) {
+        vse_vetki[imya_vetki] = kontekst;
     }
 
-    DialogueScriptParser::BranchDeclContext* getBranch(const std::string& name) const {
-        auto it = branches.find(name);
-        if (it != branches.end()) {
-            return it->second;
+    // Получить ветку по имени
+    DialogueScriptParser::BranchDeclContext* poluchitVetku(const std::string& imya_vetki) const {
+        auto iterator = vse_vetki.find(imya_vetki);
+        if (iterator != vse_vetki.end()) {
+            return iterator->second;
         }
         return nullptr;
     }
 
-    void setStartBranch(const std::string& name) {
-        startBranch = name;
+    // Установить стартовую ветку
+    void ustanovitStart(const std::string& imya_vetki) {
+        startovaya_vetka = imya_vetki;
     }
 
-    const std::string& getStartBranch() const {
-        return startBranch;
+    // Получить имя стартовой ветки
+    const std::string& poluchitStart() const {
+        return startovaya_vetka;
     }
 
-    bool hasBranch(const std::string& name) const {
-        return branches.find(name) != branches.end();
+    // Проверить существование ветки
+    bool sushchestvuetVetka(const std::string& imya_vetki) const {
+        return vse_vetki.find(imya_vetki) != vse_vetki.end();
     }
 };
