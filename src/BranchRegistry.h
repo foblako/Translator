@@ -7,36 +7,36 @@
 // Реестр всех веток диалога для быстрых переходов
 class BranchRegistry {
     // Хранилище веток: имя ветки -> указатель на узел в дереве разбора
-    std::unordered_map<std::string, DialogueScriptParser::BranchDeclContext*> vse_vetki;
-    std::string startovaya_vetka; // Имя стартовой ветки
+    std::unordered_map<std::string, DialogueScriptParser::BranchDeclContext*> branches;
+    std::string startBranch; // Имя стартовой ветки
 
 public:
     // Зарегистрировать новую ветку
-    void zaregistrirovatVetku(const std::string& imya_vetki, DialogueScriptParser::BranchDeclContext* kontekst) {
-        vse_vetki[imya_vetki] = kontekst;
+    void registerBranch(const std::string& branchName, DialogueScriptParser::BranchDeclContext* ctx) {
+        branches[branchName] = ctx;
     }
 
     // Получить ветку по имени
-    DialogueScriptParser::BranchDeclContext* poluchitVetku(const std::string& imya_vetki) const {
-        auto iterator = vse_vetki.find(imya_vetki);
-        if (iterator != vse_vetki.end()) {
-            return iterator->second;
+    DialogueScriptParser::BranchDeclContext* getBranch(const std::string& branchName) const {
+        auto it = branches.find(branchName);
+        if (it != branches.end()) {
+            return it->second;
         }
         return nullptr;
     }
 
     // Установить стартовую ветку
-    void ustanovitStart(const std::string& imya_vetki) {
-        startovaya_vetka = imya_vetki;
+    void setStartBranch(const std::string& branchName) {
+        startBranch = branchName;
     }
 
     // Получить имя стартовой ветки
-    const std::string& poluchitStart() const {
-        return startovaya_vetka;
+    const std::string& getStartBranch() const {
+        return startBranch;
     }
 
     // Проверить существование ветки
-    bool sushchestvuetVetka(const std::string& imya_vetki) const {
-        return vse_vetki.find(imya_vetki) != vse_vetki.end();
+    bool hasBranch(const std::string& branchName) const {
+        return branches.find(branchName) != branches.end();
     }
 };

@@ -15,43 +15,43 @@ int main(int argc, const char* argv[]) {
         return 1;
     }
 
-    std::ifstream potok_fajla(argv[1]);
-    if (!potok_fajla.is_open()) {
+    std::ifstream fileStream(argv[1]);
+    if (!fileStream.is_open()) {
         std::cerr << "Не удалось открыть файл: " << argv[1] << std::endl;
         return 1;
     }
 
     // Настраиваем ANTLR лексер
-    antlr4::ANTLRInputStream vhodnoj_potok(potok_fajla);
-    DialogueScriptLexer lekser(&vhodnoj_potok);
+    antlr4::ANTLRInputStream input(fileStream);
+    DialogueScriptLexer lexer(&input);
 
-    DialogueErrorListener slushatel_oshibok;
-    lekser.removeErrorListeners();
-    lekser.addErrorListener(&slushatel_oshibok);
+    DialogueErrorListener errorListener;
+    lexer.removeErrorListeners();
+    lexer.addErrorListener(&errorListener);
 
     // Настраиваем ANTLR парсер
-    antlr4::CommonTokenStream potok_tokenov(&lekser);
-    DialogueScriptParser parser(&potok_tokenov);
+    antlr4::CommonTokenStream tokens(&lexer);
+    DialogueScriptParser parser(&tokens);
 
     parser.removeErrorListeners();
-    parser.addErrorListener(&slushatel_oshibok);
+    parser.addErrorListener(&errorListener);
 
     // Строим синтаксическое дерево
-    DialogueScriptParser::ProgramContext* derevoRazbora = parser.program();
+    DialogueScriptParser::ProgramContext* tree = parser.program();
 
     // Проверяем наличие синтаксических ошибок
-    if (slushatel_oshibok.est_oshibka) {
+    if (errorListener.hasError) {
         std::cerr << "Синтаксический анализ завершился с ошибками." << std::endl;
         return 1;
     }
 
     // Инициализируем состояние мира и запускаем интерпретатор
-    WorldState mir;
-    BranchRegistry reestr_vetok;
-    DialogueInterpreter interpretator(mir, reestr_vetok);
+    WorldState world;
+    BranchRegistry registry;
+    DialogueInterpreter interpreter(world, registry);
 
     try {
-        interpretator.visit(derevoRazbora);
+        interpreter.visit(tree);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return 1; // Завершаемся с ошибкой при семантических сбоях (ошибка времени выполнения)

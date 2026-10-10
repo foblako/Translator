@@ -5,43 +5,43 @@
 
 // Класс для хранения состояния мира: инвентарь игрока и глобальные флаги
 class WorldState {
-    std::unordered_map<std::string, int> inventar_igroka; // Инвентарь: название предмета -> количество
-    std::unordered_map<std::string, bool> global_flagi;   // Флаги: название флага -> значение
+    std::unordered_map<std::string, int> inventory; // Инвентарь: название предмета -> количество
+    std::unordered_map<std::string, bool> flags;    // Флаги: название флага -> значение
 
 public:
     // Добавить предмет в инвентарь
-    void datPredmet(const std::string& nazvanie_predmeta) {
-        inventar_igroka[nazvanie_predmeta]++;
+    void giveItem(const std::string& itemName) {
+        inventory[itemName]++;
     }
 
     // Забрать предмет из инвентаря
-    bool zabratPredmet(const std::string& nazvanie_predmeta, int kolichestvo) {
-        if (inventar_igroka[nazvanie_predmeta] >= kolichestvo) {
-            inventar_igroka[nazvanie_predmeta] -= kolichestvo;
+    bool takeItem(const std::string& itemName, int count) {
+        if (inventory[itemName] >= count) {
+            inventory[itemName] -= count;
             return true;
         }
         return false; // Недостаточно предметов
     }
 
     // Проверить наличие предмета
-    bool estPredmet(const std::string& nazvanie_predmeta) const {
-        auto iterator = inventar_igroka.find(nazvanie_predmeta);
-        if (iterator != inventar_igroka.end()) {
-            return iterator->second > 0;
+    bool hasItem(const std::string& itemName) const {
+        auto it = inventory.find(itemName);
+        if (it != inventory.end()) {
+            return it->second > 0;
         }
         return false;
     }
 
     // Установить значение флага
-    void ustanovitFlag(const std::string& nazvanie_flaga, bool znachenie) {
-        global_flagi[nazvanie_flaga] = znachenie;
+    void setFlag(const std::string& flagName, bool value) {
+        flags[flagName] = value;
     }
 
     // Проверить значение флага
-    bool proveritFlag(const std::string& nazvanie_flaga) const {
-        auto iterator = global_flagi.find(nazvanie_flaga);
-        if (iterator != global_flagi.end()) {
-            return iterator->second;
+    bool hasFlag(const std::string& flagName) const {
+        auto it = flags.find(flagName);
+        if (it != flags.end()) {
+            return it->second;
         }
         return false;
     }

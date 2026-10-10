@@ -2,19 +2,19 @@
 #include <iostream>
 #include <stdexcept>
 
-DialogueInterpreter::DialogueInterpreter(WorldState& mir, BranchRegistry& reestr_vetok)
-    : mir(mir), reestr_vetok(reestr_vetok) {}
+DialogueInterpreter::DialogueInterpreter(WorldState& world, BranchRegistry& registry)
+    : world(world), registry(registry) {}
 
-std::string DialogueInterpreter::udalitKavychki(const std::string& stroka) {
-    if (stroka.length() >= 2 && stroka.front() == '"' && stroka.back() == '"') {
-        return stroka.substr(1, stroka.length() - 2);
+std::string DialogueInterpreter::unquote(const std::string& str) {
+    if (str.length() >= 2 && str.front() == '"' && str.back() == '"') {
+        return str.substr(1, str.length() - 2);
     }
-    return stroka;
+    return str;
 }
 
 antlrcpp::Any DialogueInterpreter::visitProgram(DialogueScriptParser::ProgramContext* ctx) {
     // Проход 1: Статический анализ (регистрация веток и стартовой точки)
-    etap_stat_analiza = true;
+    isStaticAnalysisPass = true;
 
     if (!ctx->startDecl()) {
         throw std::runtime_error("Семантическая ошибка: отсутствует объявление 'start'");
@@ -22,72 +22,79 @@ antlrcpp::Any DialogueInterpreter::visitProgram(DialogueScriptParser::ProgramCon
 
     visit(ctx->startDecl());
 
-    for (auto* vetka : ctx->branchDecl()) {
-        visit(vetka);
+    for (auto* branch : ctx->branchDecl()) {
+        visit(branch);
+    }
+
+    // Проход 1b: Проверка переходов (goto/options) во всех ветках
+    for (auto* branch : ctx->branchDecl()) {
+        for (auto* stmt : branch->statement()) {
+            visit(stmt);
+        }
     }
 
     // Проверка существования стартовой ветки
-    if (!reestr_vetok.sushchestvuetVetka(reestr_vetok.poluchitStart())) {
-        throw std::runtime_error("Семантическая ошибка: неопределенная стартовая ветка '" + reestr_vetok.poluchitStart() + "' на строке " + std::to_string(ctx->startDecl()->getStart()->getLine()));
+    if (!registry.hasBranch(registry.getStartBranch())) {
+        throw std::runtime_error("Семантическая ошибка: неопределенная стартовая ветка '" + registry.getStartBranch() + "' на строке " + std::to_string(ctx->startDecl()->getStart()->getLine()));
     }
 
     // Проход 2: Исполнение диалога
-    etap_stat_analiza = false;
-    vypolnitVetku(reestr_vetok.poluchitStart());
+    isStaticAnalysisPass = false;
+    executeBranch(registry.getStartBranch());
     std::cout << "\nДиалог завершен." << std::endl;
     return {};
 }
 
 antlrcpp::Any DialogueInterpreter::visitStartDecl(DialogueScriptParser::StartDeclContext* ctx) {
-    if (etap_stat_analiza) {
-        reestr_vetok.ustanovitStart(ctx->IDENTIFIER()->getText());
+    if (isStaticAnalysisPass) {
+        registry.setStartBranch(ctx->IDENTIFIER()->getText());
     }
     return {};
 }
 
 antlrcpp::Any DialogueInterpreter::visitBranchDecl(DialogueScriptParser::BranchDeclContext* ctx) {
-    if (etap_stat_analiza) {
-        std::string imya_vetki = ctx->IDENTIFIER()->getText();
-        if (reestr_vetok.sushchestvuetVetka(imya_vetki)) {
-            throw std::runtime_error("Семантическая ошибка: дублирующееся имя ветки '" + imya_vetki + "' на строке " + std::to_string(ctx->getStart()->getLine()));
+    if (isStaticAnalysisPass) {
+        std::string branchName = ctx->IDENTIFIER()->getText();
+        if (registry.hasBranch(branchName)) {
+            throw std::runtime_error("Семантическая ошибка: дублирующееся имя ветки '" + branchName + "' на строке " + std::to_string(ctx->getStart()->getLine()));
         }
-        reestr_vetok.zaregistrirovatVetku(imya_vetki, ctx);
+        registry.registerBranch(branchName, ctx);
     }
     return {};
 }
 
-void DialogueInterpreter::vypolnitVetku(const std::string& imya_vetki) {
-    auto* kontekst_vetki = reestr_vetok.poluchitVetku(imya_vetki);
-    if (!kontekst_vetki) {
-        throw std::runtime_error("Ошибка выполнения: попытка запустить неопределенную ветку '" + imya_vetki + "'");
+void DialogueInterpreter::executeBranch(const std::string& branchName) {
+    auto* branchCtx = registry.getBranch(branchName);
+    if (!branchCtx) {
+        throw std::runtime_error("Ошибка выполнения: попытка запустить неопределенную ветку '" + branchName + "'");
     }
 
-    for (auto* kontekst_operatora : kontekst_vetki->statement()) {
+    for (auto* stmtCtx : branchCtx->statement()) {
         // Выполняем оператор. goto/choice могут вернуть булево значение, указывающее на необходимость остановки
-        antlrcpp::Any rezultat = visit(kontekst_operatora);
-        if (rezultat.type() == typeid(bool) && std::any_cast<bool>(rezultat)) {
+        antlrcpp::Any result = visit(stmtCtx);
+        if (result.type() == typeid(bool) && std::any_cast<bool>(result)) {
             return; // Произошел переход в другую ветку
         }
     }
 }
 
 antlrcpp::Any DialogueInterpreter::visitNpcStmt(DialogueScriptParser::NpcStmtContext* ctx) {
-    if (etap_stat_analiza) return {};
+    if (isStaticAnalysisPass) return {};
 
-    std::string imya = udalitKavychki(ctx->STRING(0)->getText());
-    std::string tekst = udalitKavychki(ctx->STRING(1)->getText());
+    std::string name = unquote(ctx->STRING(0)->getText());
+    std::string text = unquote(ctx->STRING(1)->getText());
 
-    std::cout << "[" << imya << "]: " << tekst << std::endl;
+    std::cout << "[" << name << "]: " << text << std::endl;
     return {};
 }
 
 antlrcpp::Any DialogueInterpreter::visitChoiceStmt(DialogueScriptParser::ChoiceStmtContext* ctx) {
-    if (etap_stat_analiza) {
+    if (isStaticAnalysisPass) {
         // Во время статического анализа проверяем корректность целевых веток
-        for (auto* kontekst_opcii : ctx->option()) {
-            std::string celevaya_vetka = kontekst_opcii->IDENTIFIER()->getText();
-            if (!reestr_vetok.sushchestvuetVetka(celevaya_vetka)) {
-                throw std::runtime_error("Семантическая ошибка: неизвестная целевая ветка '" + celevaya_vetka + "' на строке " + std::to_string(kontekst_opcii->getStart()->getLine()));
+        for (auto* optCtx : ctx->option()) {
+            std::string targetBranch = optCtx->IDENTIFIER()->getText();
+            if (!registry.hasBranch(targetBranch)) {
+                throw std::runtime_error("Семантическая ошибка: неизвестная целевая ветка '" + targetBranch + "' на строке " + std::to_string(optCtx->getStart()->getLine()));
             }
         }
         return {};
@@ -95,30 +102,30 @@ antlrcpp::Any DialogueInterpreter::visitChoiceStmt(DialogueScriptParser::ChoiceS
 
     std::cout << std::endl;
 
-    std::vector<std::string> teks_opcij;
-    std::vector<std::string> tseli_opcij;
+    std::vector<std::string> optionsText;
+    std::vector<std::string> optionsTargets;
 
-    int indeks = 1;
-    for (auto* kontekst_opcii : ctx->option()) {
-        std::string tekst = udalitKavychki(kontekst_opcii->STRING()->getText());
-        std::string tsel = kontekst_opcii->IDENTIFIER()->getText();
-        teks_opcij.push_back(tekst);
-        tseli_opcij.push_back(tsel);
-        std::cout << indeks << ") " << tekst << std::endl;
-        indeks++;
+    int index = 1;
+    for (auto* optCtx : ctx->option()) {
+        std::string text = unquote(optCtx->STRING()->getText());
+        std::string target = optCtx->IDENTIFIER()->getText();
+        optionsText.push_back(text);
+        optionsTargets.push_back(target);
+        std::cout << index << ") " << text << std::endl;
+        index++;
     }
 
-    std::cout << "\nВаш выбор (1-" << teks_opcij.size() << "): ";
-    int vybor = -1;
-    if (!(std::cin >> vybor)) {
+    std::cout << "\nВаш выбор (1-" << optionsText.size() << "): ";
+    int choice = -1;
+    if (!(std::cin >> choice)) {
         // Ошибка потока ввода, прерываем выполнение
         std::cin.clear();
         return true;
     }
 
-    if (vybor >= 1 && vybor <= (int)tseli_opcij.size()) {
+    if (choice >= 1 && choice <= (int)optionsTargets.size()) {
         std::cout << std::endl;
-        vypolnitVetku(tseli_opcij[vybor - 1]);
+        executeBranch(optionsTargets[choice - 1]);
     } else {
         std::cerr << "Недопустимый выбор. Завершение диалога." << std::endl;
     }
@@ -126,25 +133,25 @@ antlrcpp::Any DialogueInterpreter::visitChoiceStmt(DialogueScriptParser::ChoiceS
     return true; // Прерываем выполнение текущей ветки, так как мы сделали переход
 }
 
-bool DialogueInterpreter::vychislitUslovie(DialogueScriptParser::ConditionContext* ctx) {
-    std::string imya_usloviya = udalitKavychki(ctx->STRING()->getText());
+bool DialogueInterpreter::evaluateCondition(DialogueScriptParser::ConditionContext* ctx) {
+    std::string conditionName = unquote(ctx->STRING()->getText());
     if (ctx->getText().rfind("has_item", 0) == 0) {
-        return mir.estPredmet(imya_usloviya);
+        return world.hasItem(conditionName);
     } else if (ctx->getText().rfind("has_flag", 0) == 0) {
-        return mir.proveritFlag(imya_usloviya);
+        return world.hasFlag(conditionName);
     }
     return false;
 }
 
 antlrcpp::Any DialogueInterpreter::visitIfStmt(DialogueScriptParser::IfStmtContext* ctx) {
-    if (etap_stat_analiza) {
-        for (auto* kontekst_operatora : ctx->statement()) {
-            visit(kontekst_operatora);
+    if (isStaticAnalysisPass) {
+        for (auto* stmtCtx : ctx->statement()) {
+            visit(stmtCtx);
         }
         return {};
     }
 
-    bool uslovie = vychislitUslovie(ctx->condition());
+    bool condition = evaluateCondition(ctx->condition());
 
     // Ищем индекс разделителя else
     size_t elseStartIdx = (size_t)-1;
@@ -156,24 +163,24 @@ antlrcpp::Any DialogueInterpreter::visitIfStmt(DialogueScriptParser::IfStmtConte
     }
 
     // Проходим по каждому оператору и решаем нужно ли его выполнять
-    for (auto* kontekst_operatora : ctx->statement()) {
-        bool do_else = true;
+    for (auto* stmtCtx : ctx->statement()) {
+        bool beforeElse = true;
 
         for (size_t i = 0; i < ctx->children.size(); i++) {
-            if (ctx->children[i] == kontekst_operatora) {
+            if (ctx->children[i] == stmtCtx) {
                 if (elseStartIdx != (size_t)-1 && i > elseStartIdx) {
-                    do_else = false;
+                    beforeElse = false;
                 }
                 break;
             }
         }
 
-        if (uslovie && do_else) {
-            antlrcpp::Any rezultat = visit(kontekst_operatora);
-            if (rezultat.type() == typeid(bool) && std::any_cast<bool>(rezultat)) return true;
-        } else if (!uslovie && !do_else) {
-            antlrcpp::Any rezultat = visit(kontekst_operatora);
-            if (rezultat.type() == typeid(bool) && std::any_cast<bool>(rezultat)) return true;
+        if (condition && beforeElse) {
+            antlrcpp::Any result = visit(stmtCtx);
+            if (result.type() == typeid(bool) && std::any_cast<bool>(result)) return true;
+        } else if (!condition && !beforeElse) {
+            antlrcpp::Any result = visit(stmtCtx);
+            if (result.type() == typeid(bool) && std::any_cast<bool>(result)) return true;
         }
     }
 
@@ -181,37 +188,37 @@ antlrcpp::Any DialogueInterpreter::visitIfStmt(DialogueScriptParser::IfStmtConte
 }
 
 antlrcpp::Any DialogueInterpreter::visitGotoStmt(DialogueScriptParser::GotoStmtContext* ctx) {
-    std::string imya_vetki = ctx->IDENTIFIER()->getText();
-    if (etap_stat_analiza) {
-        if (!reestr_vetok.sushchestvuetVetka(imya_vetki)) {
-            throw std::runtime_error("Семантическая ошибка: неизвестная целевая ветка '" + imya_vetki + "' на строке " + std::to_string(ctx->getStart()->getLine()));
+    std::string branchName = ctx->IDENTIFIER()->getText();
+    if (isStaticAnalysisPass) {
+        if (!registry.hasBranch(branchName)) {
+            throw std::runtime_error("Семантическая ошибка: неизвестная целевая ветка '" + branchName + "' на строке " + std::to_string(ctx->getStart()->getLine()));
         }
         return {};
     }
 
-    vypolnitVetku(imya_vetki);
+    executeBranch(branchName);
     return true; // Прерываем выполнение, чтобы перейти
 }
 
 antlrcpp::Any DialogueInterpreter::visitActionStmt(DialogueScriptParser::ActionStmtContext* ctx) {
-    if (etap_stat_analiza) return {};
+    if (isStaticAnalysisPass) return {};
 
-    std::string ves_tekst = ctx->getText();
-    std::string argument = udalitKavychki(ctx->STRING()->getText());
+    std::string fullText = ctx->getText();
+    std::string argument = unquote(ctx->STRING()->getText());
 
-    if (ves_tekst.rfind("give_item", 0) == 0) {
-        mir.datPredmet(argument);
+    if (fullText.rfind("give_item", 0) == 0) {
+        world.giveItem(argument);
         std::cout << "(Предмет добавлен в инвентарь: " << argument << ")" << std::endl;
-    } else if (ves_tekst.rfind("take_item", 0) == 0) {
-        int kolichestvo = std::stoi(ctx->INT()->getText());
-        if (!mir.zabratPredmet(argument, kolichestvo)) {
+    } else if (fullText.rfind("take_item", 0) == 0) {
+        int count = std::stoi(ctx->INT()->getText());
+        if (!world.takeItem(argument, count)) {
             throw std::runtime_error("Ошибка выполнения: недостаточно предметов '" + argument + "' чтобы забрать");
         }
-        std::cout << "(Предмет изъят из инвентаря: " << argument << " x" << kolichestvo << ")" << std::endl;
-    } else if (ves_tekst.rfind("set_flag", 0) == 0) {
-        bool znachenie = ctx->BOOL()->getText() == "true";
-        mir.ustanovitFlag(argument, znachenie);
-        std::cout << "(Флаг установлен: " << argument << " = " << (znachenie ? "true" : "false") << ")" << std::endl;
+        std::cout << "(Предмет изъят из инвентаря: " << argument << " x" << count << ")" << std::endl;
+    } else if (fullText.rfind("set_flag", 0) == 0) {
+        bool value = ctx->BOOL()->getText() == "true";
+        world.setFlag(argument, value);
+        std::cout << "(Флаг установлен: " << argument << " = " << (value ? "true" : "false") << ")" << std::endl;
     }
 
     return false;
